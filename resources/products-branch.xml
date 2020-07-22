@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<catalog>
+  <organization name="re-Store">
+    <product type="iphone">iPhone 11 Pro</product>
+    <product type="iphone">iPhone SE</product>
+  </organization>
+  <organization name="DNS">
+    <branch name="Office 1">
+      <product type="tablet">iPad 3</product>
+      <product type="notebook">Macbook Pro</product>
+    </branch>
+    <branch name="Office 2">
+      <product type="tablet">iPad 4</product>
+      <product type="phone">Samsung A6+</product>
+    </branch>
+  </organization>
+</catalog>

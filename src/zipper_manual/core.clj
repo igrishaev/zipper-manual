@@ -4,6 +4,12 @@
    [clojure.java.io :as io]
    [clojure.xml :as xml]))
 
+
+#_
+(:require
+ [clojure.java.io :as io]
+ [clojure.xml :as xml])
+
 #_
 (->> [1 2 3]
      zip/vector-zip
@@ -226,11 +232,11 @@ nil
 (->> "products.xml" io/resource io/file xml/parse xml-seq second :tag)
 
 (defn ->xml-zipper [path]
-  (->> path
-       io/resource
-       io/file
-       xml/parse
-       zip/xml-zip))
+  (-> path
+      io/resource
+      io/file
+      xml/parse
+      zip/xml-zip))
 
 
 #_
@@ -239,3 +245,197 @@ nil
      iter-zip
      (map (fn [loc]
             (-> loc zip/node :tag))))
+
+
+(defn loc-product? [loc]
+  (-> loc zip/node :tag (= :product)))
+
+
+(defn loc->product [loc]
+  (-> loc zip/node :content first))
+
+
+#_
+(->> "products.xml"
+     ->xml-zipper
+     iter-zip
+     (filter loc-product?)
+     (map loc->product))
+
+
+(def xml-data
+  (-> "products.xml"
+      io/resource
+      io/file
+      xml/parse))
+
+(def orgs
+  (:content xml-data))
+
+(def products
+  (mapcat :content orgs))
+
+(def product-names
+  (mapcat :content products))
+
+#_
+(->> "products.xml"
+     io/resource
+     io/file
+     xml/parse
+     :content
+     (mapcat :content)
+     (mapcat :content))
+
+#_
+(->> "products-branch.xml"
+     io/resource
+     io/file
+     xml/parse
+     :content
+     (mapcat :content)
+     (mapcat :content))
+
+#_
+(->> "products-branch.xml"
+     ->xml-zipper
+     iter-zip
+     (filter loc-product?)
+     (map loc->product))
+
+
+(defn node-product? [node]
+  (some-> node :tag (= :product)))
+
+
+#_
+(->> "products-branch.xml"
+     io/resource
+     io/file
+     xml/parse
+     xml-seq
+     (filter node-product?)
+     (mapcat :content))
+
+
+#_
+(->> "products-branch.xml"
+     io/resource
+     io/file
+     xml/parse
+     xml-seq
+     (map :tag)
+     (remove nil?))
+
+(defn loc-iphone? [loc]
+  (let [node (zip/node loc)]
+    (and (-> node :tag (= :product))
+         (-> node :attrs :type (= "iphone")))))
+
+
+(def loc-iphones
+  (->> "products.xml"
+       ->xml-zipper
+       iter-zip
+       (filter loc-iphone?)))
+
+
+(def loc-orgs
+  (->> loc-iphones
+       (map zip/up)
+       (map (comp :attrs zip/node))))
+
+
+(defn loc-org? [loc]
+  (-> loc zip/node :tag (= :organization)))
+
+
+(defn loc->org [loc]
+  (->> loc
+       (iterate zip/up)
+       (drop-while (complement loc-org?))
+       (first)))
+
+
+(->> "products-branch.xml"
+     ->xml-zipper
+     iter-zip
+     (filter loc-iphone?)
+     (map loc->org)
+     (map (comp :attrs zip/node))
+     (set))
+
+
+(defn loc-fiber? [loc]
+  (some-> loc zip/node :attrs :type (= "fiber")))
+
+
+(->> "products-bundle.xml"
+     ->xml-zipper
+     iter-zip
+     (filter loc-fiber?)
+     (map (comp first :content zip/node)))
+
+
+(defn loc-in-bundle? [loc]
+  (some-> loc zip/up zip/node :tag (= :bundle)))
+
+
+(->> "products-bundle.xml"
+     ->xml-zipper
+     iter-zip
+     (filter loc-fiber?)
+     (remove loc-in-bundle?)
+     (map loc->org)
+     (map (comp :attrs zip/node))
+     (set))
+
+
+(defn loc-lefts [loc]
+  (->> loc
+       (iterate zip/left)
+       (take-while some?)
+       (rest)))
+
+(defn loc-rights [loc]
+  (->> loc
+       (iterate zip/right)
+       (take-while some?)
+       (rest)))
+
+
+(defn loc-neighbors [loc]
+  (concat (loc-lefts loc)
+          (loc-rights loc)))
+
+
+(defn node-neighbors [loc]
+  (concat (zip/lefts loc)
+          (zip/rights loc)))
+
+
+(defn node-fiber? [node]
+  (some-> node :attrs :type (= "fiber")))
+
+
+(defn with-fiber? [loc]
+  (let [nodes (node-neighbors loc)]
+    (some node-fiber? nodes)))
+
+
+(->> "products-bundle.xml"
+     ->xml-zipper
+     iter-zip
+     (filter loc-iphone?)
+     (filter loc-in-bundle?)
+     (filter with-fiber?)
+     (map loc->org)
+     (map (comp :attrs zip/node))
+     (set))
+
+#_
+(-> [1 2 3]
+    zip/vector-zip
+    zip/down
+    zip/right
+    node-neighbors)

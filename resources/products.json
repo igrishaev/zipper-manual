@@ -1,0 +1,6 @@
+[{"name": "re-Store",
+  "products": [{"type": "iphone", "name": "iPhone 11 Pro"},
+               {"type": "iphone", "name": "iPhone SE"}]},
+ {"name": "DNS",
+  "products": [{"type": "tablet", "name": "iPad 3"},
+               {"type": "notebook", "name": "Macbook Pro"}]}]
