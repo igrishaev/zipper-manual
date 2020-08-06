@@ -439,3 +439,259 @@ nil
     zip/down
     zip/right
     node-neighbors)
+
+
+
+(def data [1 2 [3 4 [5 :error]]])
+
+(defn loc-error? [loc]
+  (some-> loc zip/node (= :error)))
+
+(def loc-error
+  (->> data
+       zip/vector-zip
+       iter-zip
+       (some (fn [loc]
+               (when (loc-error? loc)
+                 loc)))))
+
+(-> loc-error
+    (zip/replace :ok)
+    zip/root)
+;; [1 2 [3 4 [5 :ok]]]
+
+
+;; ---------
+
+(def data [1 2 [5 nil 2 [3 nil]] nil 1])
+
+#_
+(loop [loc (zip/vector-zip data)]
+  (if (zip/end? loc)
+    (zip/node loc)
+    (if (-> loc zip/node nil?)
+      (recur (zip/next (zip/replace loc 0)))
+      (recur (zip/next loc)))))
+;; [1 2 [5 0 2 [3 0]] 0 1]
+
+;; -------------
+
+
+(def data [-1 2 [5 -2 2 [-3 2]] -1 5])
+
+(defn abs [num]
+  (if (neg? num)
+    (- num)
+    num))
+
+(loop [loc (zip/vector-zip data)]
+  (if (zip/end? loc)
+    (zip/node loc)
+    (if (and (-> loc zip/node number?)
+             (-> loc zip/node neg?))
+      (recur (zip/next (zip/edit loc abs)))
+      (recur (zip/next loc)))))
+
+;; [1 2 [5 2 2 [3 2]] 1 5]
+
+;; --------------
+
+
+(defn find-loc [loc loc-pred]
+  (->> loc
+       iter-zip
+       (some (fn [loc]
+               (when (loc-pred loc)
+                 loc)))))
+
+
+(defn alter-loc [loc loc-fn]
+  (loop [loc loc]
+    (if (zip/end? loc)
+      loc
+      (recur (-> loc loc-fn zip/next)))))
+
+
+;; ----
+
+(defn loc-abs [loc]
+  (if (and (-> loc zip/node number?)
+           (-> loc zip/node neg?))
+    (zip/edit loc abs)
+    loc))
+
+
+#_
+(-> [-1 2 [5 -2 2 [-3 2]] -1 5]
+    zip/vector-zip
+    (alter-loc loc-abs)
+    zip/node)
+
+;; [1 2 [5 2 2 [3 2]] 1 5]
+
+;; -----------
+
+(def data [1 2 [3 4 [5 :error]]])
+
+(defn loc-error? [loc]
+  (some-> loc zip/node (= :error)))
+
+(def loc-error
+  (-> data
+      zip/vector-zip
+      (find-loc loc-error?)))
+
+(-> loc-error
+    (zip/replace :ok)
+    zip/root)
+;; [1 2 [3 4 [5 :ok]]]
+
+
+;; alter iphone price
+
+
+(defn alter-attr-price [node ratio]
+  (update-in node [:attrs :price]
+             (fn [price]
+               (->> price
+                    read-string
+                    (* ratio)
+                    (format "%.2f")))))
+
+
+(defn alter-iphone-price [loc]
+  (if (loc-iphone? loc)
+    (zip/edit loc alter-attr-price 0.9)
+    loc))
+
+
+
+#_
+(-> "products-price.xml"
+    ->xml-zipper
+    (alter-loc alter-iphone-price)
+    zip/node
+    xml/emit)
+
+"
+<?xml version='1.0' encoding='UTF-8'?>
+<catalog>
+<organization name='re-Store'>
+<product price='8.99' type='fiber'>
+VIP Fiber Plus
+</product>
+<product price='809.99' type='iphone'>
+iPhone 11 Pro
+</product>
+</organization>
+<organization name='DNS'>
+<branch name='Office 2'>
+<bundle>
+<product price='9.99' type='fiber'>
+Premium iFiber
+</product>
+<product price='899.99' type='iphone'>
+iPhone 11 Pro
+</product>
+</bundle>
+</branch>
+</organization>
+</catalog>
+"
+
+
+;; add to bundle
+
+
+(defn loc-bundle? [loc]
+  (some-> loc zip/node :tag (= :bundle)))
+
+(def node-headset
+  {:tag :product
+   :attrs {:type "headset"
+           :price "199.99"}
+   :content ["AirPods Pro"]})
+
+(defn add-to-bundle [loc]
+  (if (loc-bundle? loc)
+    (zip/append-child loc node-headset)
+    loc))
+
+(-> "products-price.xml"
+    ->xml-zipper
+    (alter-loc add-to-bundle)
+    zip/node
+    xml/emit)
+
+"
+<?xml version='1.0' encoding='UTF-8'?>
+<catalog>
+<organization name='re-Store'>
+<product price='8.99' type='fiber'>
+VIP Fiber Plus
+</product>
+<product price='899.99' type='iphone'>
+iPhone 11 Pro
+</product>
+</organization>
+<organization name='DNS'>
+<branch name='Office 2'>
+<bundle>
+<product price='9.99' type='fiber'>
+Premium iFiber
+</product>
+<product price='999.99' type='iphone'>
+iPhone 11 Pro
+</product>
+<product type='headset' price='199.99'>
+AirPods Pro
+</product>
+</bundle>
+</branch>
+</organization>
+</catalog>
+"
+
+(defn append-childs [loc items]
+  (reduce (fn [loc item]
+            (zip/append-child loc item))
+          loc
+          items))
+
+(defn disband-bundle [loc]
+  (if (loc-bundle? loc)
+    (let [products (zip/children loc)
+          loc-prev (zip/remove loc)]
+      (append-childs loc-prev products))
+    loc))
+
+(-> "products-price.xml"
+    ->xml-zipper
+    (alter-loc disband-bundle)
+    zip/node
+    xml/emit)
+
+
+"
+<?xml version='1.0' encoding='UTF-8'?>
+<catalog>
+<organization name='re-Store'>
+<product price='8.99' type='fiber'>
+VIP Fiber Plus
+</product>
+<product price='899.99' type='iphone'>
+iPhone 11 Pro
+</product>
+</organization>
+<organization name='DNS'>
+<branch name='Office 2'>
+<product price='9.99' type='fiber'>
+Premium iFiber
+</product>
+<product price='999.99' type='iphone'>
+iPhone 11 Pro
+</product>
+</branch>
+</organization>
+</catalog>
+"

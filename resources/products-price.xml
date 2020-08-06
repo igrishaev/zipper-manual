@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<catalog>
+  <organization name="re-Store">
+    <product type="fiber" price="8.99">VIP Fiber Plus</product>
+    <product type="iphone" price="899.99">iPhone 11 Pro</product>
+  </organization>
+  <organization name="DNS">
+    <branch name="Office 2">
+      <bundle>
+        <product type="fiber" price="9.99">Premium iFiber</product>
+        <product type="iphone" price="999.99">iPhone 11 Pro</product>
+      </bundle>
+    </branch>
+  </organization>
+</catalog>
