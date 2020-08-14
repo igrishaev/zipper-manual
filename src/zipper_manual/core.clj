@@ -2,7 +2,9 @@
   (:require
    [clojure.zip :as zip]
    [clojure.java.io :as io]
-   [clojure.xml :as xml]))
+   [clojure.xml :as xml]
+
+   [clojure.test :refer [deftest is]]))
 
 
 #_
@@ -695,3 +697,282 @@ iPhone 11 Pro
 </organization>
 </catalog>
 "
+
+
+{:tag :organization
+ :attrs {:name "DNS"}}
+
+
+{:tag :product
+ :attrs {:type "iphone"}
+ :content ["iPhone 11 Pro"]}
+
+{:tag :product
+ :attrs {:type "fiber"}
+ :content ["Premium iFiber"]}
+
+
+{:tag :organization
+ :attrs {:name "DNS"}
+ :content [{:tag :product
+            :attrs {:type "iphone"}
+            :content ["iPhone 11 Pro"]}
+           {:tag :product
+            :attrs {:type "fiber"}
+            :content ["Premium iFiber"]}]}
+
+
+(-> [1 2 3]
+    zip/vector-zip
+    zip/down
+    zip/right)
+
+#_
+[2 {:l [1], :pnodes [[1 2 3]], :ppath nil, :r (3)}]
+
+
+(def loc-2
+  (-> [1 2 3]
+      zip/vector-zip
+      zip/down
+      zip/right
+      (zip/edit * 2)))
+
+#_
+[4 {:l [1], :pnodes [[1 2 3]], :ppath nil, :r (3), :changed? true}]
+
+(-> loc-2
+    zip/up
+    zip/node)
+
+
+(-> [1 2 3]
+    zip/vector-zip
+    zip/down
+    zip/right
+    (zip/edit * 2)
+    zip/root)
+
+
+
+
+(def zip-rand
+  (zip/zipper (constantly true)
+              (constantly (seq [1 2 3]))
+              nil
+              0))
+
+
+(-> zip-rand zip/down zip/down zip/right zip/node)
+
+
+(def zip-123
+  (zip/zipper any?
+              (constantly (seq [1 2 3]))
+              nil
+              1))
+
+
+
+(def loc-2
+  (-> zip-123
+      zip/down
+      zip/right))
+
+(zip/node loc-2)
+;; 2
+
+
+(def down-right (comp zip/right zip/down))
+
+(-> loc-2
+    down-right
+    down-right
+    down-right
+    down-right
+    down-right
+    zip/node)
+;; 2
+
+
+
+;; rules
+[[:usd :rub] [:rub :eur] [:eur :lir]]
+
+:usd ;; from
+:rub ;; to
+
+[:usd :rub :eur]
+
+(defn exchanges [rules from to]
+  )
+
+
+(def rules
+  [[:usd :rub]
+   [:usd :lir]
+   [:rub :eur]
+   [:rub :yen]
+   [:eur :lir]
+   [:lir :tug]])
+
+(def from :usd)
+(def to :yen)
+
+(def usd-children
+  (for [[v1 v2] rules
+        :when (= v1 from)]
+    v2))
+;; (:rub :lir)
+
+(defn get-children [value]
+  (for [[v1 v2] rules
+        :when (= v1 value)]
+    v2))
+
+
+(def zip-val
+  (zip/zipper keyword?
+              get-children
+              nil
+              from))
+
+
+(def loc-to
+  (->> zip-val
+       iter-zip
+       (some (fn [loc]
+               (when (-> loc zip/node (= to))
+                 loc)))))
+
+
+(def rules
+  [[:usd :rub]
+   [:usd :lir]
+   [:rub :eur]
+   [:lir :yen]
+   [:rub :yen]
+   [:eur :lir]
+   [:lir :tug]])
+
+(def from :usd)
+(def to :yen)
+
+
+(def locs-to
+  (->> zip-val
+       iter-zip
+       (filter (fn [loc]
+                 (-> loc zip/node (= to))))))
+
+
+(for [loc locs-to]
+  (conj (zip/path loc) (zip/node loc)))
+
+
+
+(conj (zip/path loc-to) (zip/node loc-to))
+;; [:usd :rub :yen]
+
+
+(def val-chains
+  '([:usd :rub :eur :lir :yen]
+    [:usd :rub :yen]
+    [:usd :lir :yen]))
+
+
+(defn get-shortest-chains
+  [chains]
+  (when (seq chains)
+    (let [count->chains (group-by count chains)
+          min-count (apply min (keys count->chains))]
+      (get count->chains min-count))))
+
+
+(defn exchanges [rules from to]
+
+  (let [get-children
+        (fn [value]
+          (for [[v1 v2] rules
+                :when (= v1 value)]
+            v2))
+
+        zipper (zip/zipper keyword?
+                           get-children
+                           nil
+                           from)
+
+        locs-to
+        (->> zipper
+             iter-zip
+             (filter (fn [loc]
+                       (when (-> loc zip/node (= to))
+                         loc))))]
+
+    (get-shortest-chains
+     (for [loc locs-to]
+       (conj (zip/path loc) (zip/node loc))))))
+
+
+#_
+(exchanges
+ [[:usd :rub]
+  [:usd :lir]
+  [:rub :eur]
+  [:lir :yen]
+  [:rub :yen]
+  [:eur :lir]
+  [:lir :tug]]
+ :usd
+ :yen)
+
+
+(deftest test-simple
+  (is (= [[:usd :rub]]
+         (exchanges [[:usd :rub]] :usd :rub))))
+
+
+(deftest test-reverse-err
+  (is (nil? (exchanges [[:rub :usd]] :usd :rub))))
+
+
+(deftest test-no-solution
+  (is (nil? (exchanges [[:rub :usd] [:lir :eur]] :usd :eur))))
+
+
+(deftest test-two-ways
+  (is (= [[:usd :eur :rub]
+          [:usd :lir :rub]]
+         (exchanges [[:usd :eur]
+                     [:eur :rub]
+                     [:usd :lir]
+                     [:lir :rub]] :usd :rub))))
+
+
+(deftest test-short-ways-only
+  (is (= [[:usd :eur :rub]
+          [:usd :lir :rub]]
+         (exchanges [[:usd :eur]
+                     [:eur :rub]
+                     [:usd :lir]
+                     [:lir :rub]
+                     [:usd :yen]
+                     [:yen :eur]] :usd :rub))))
+
+
+(defn loc-children [loc]
+  (when-let [loc-child (zip/down loc)]
+    (->> loc-child
+         (iterate zip/right)
+         (take-while some?))))
+
+
+(defn loc-layers [loc]
+  (->> [loc]
+       (iterate (fn [locs]
+                  (mapcat loc-children locs)))
+       (take-while seq)))
+
+
+(defn loc-seq-layers [loc]
+  (apply concat (loc-layers loc)))
