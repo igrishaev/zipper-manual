@@ -976,3 +976,61 @@ iPhone 11 Pro
 
 (defn loc-seq-layers [loc]
   (apply concat (loc-layers loc)))
+
+
+
+(def rules2
+  [[:rub :usd]
+   [:usd :eur]
+   [:eur :rub]
+
+   [:rub :lir]
+   [:lir :yen]
+   [:yen :din]
+   [:din :tug]
+
+   ])
+
+
+(defn exchange2 [rules from to]
+
+  (letfn [(get-children [value]
+            (seq (for [[v1 v2] rules
+                       :when (= v1 value)]
+                   v2)))
+
+          (loc-to? [loc]
+            (-> loc zip/node (= to)))
+
+          (find-locs-to [layer]
+            (seq (filter loc-to? layer)))
+
+          (->exchage [loc]
+            (conj (zip/path loc) (zip/node loc)))]
+
+    (let [zipper (zip/zipper keyword?
+                             get-children
+                             nil
+                             from)]
+
+      #_
+      (-> zipper
+          loc-layers
+          (nth 5))
+
+
+      (->> zipper
+           loc-layers
+           (map #(map zip/node %))
+           (take 20))
+
+      #_
+      (-> zipper
+          loc-seq-layers
+          (nth 12))
+
+      #_
+      (->> zipper
+           loc-layers
+           (some find-locs-to)
+           (map ->exchage)))))
