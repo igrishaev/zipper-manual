@@ -985,11 +985,9 @@ iPhone 11 Pro
    [:eur :rub]
 
    [:rub :lir]
-   [:lir :yen]
-   [:yen :din]
-   [:din :tug]
-
-   ])
+   [:lir :eur]
+   [:eur :din]
+   [:din :tug]])
 
 
 (defn exchange2 [rules from to]
@@ -1005,7 +1003,7 @@ iPhone 11 Pro
           (find-locs-to [layer]
             (seq (filter loc-to? layer)))
 
-          (->exchage [loc]
+          (->exchange [loc]
             (conj (zip/path loc) (zip/node loc)))]
 
     (let [zipper (zip/zipper keyword?
@@ -1013,27 +1011,11 @@ iPhone 11 Pro
                              nil
                              from)]
 
-      #_
-      (-> zipper
-          loc-layers
-          (nth 5))
-
-
       (->> zipper
            loc-layers
-           (map #(map zip/node %))
-           (take 20))
-
-      #_
-      (-> zipper
-          loc-seq-layers
-          (nth 12))
-
-      #_
-      (->> zipper
-           loc-layers
+           (take 5)
            (some find-locs-to)
-           (map ->exchage)))))
+           (map ->exchange)))))
 
 
 
@@ -1085,3 +1067,27 @@ iPhone 11 Pro
 ([1 {:l [] :pnodes [[1 2 3]] :ppath nil :r (2 3)}]
  [2 {:l [1] :pnodes [[1 2 3]] :ppath nil :r (3)}]
  [3 {:l [1 2] :pnodes [[1 2 3]] :ppath nil :r nil}])
+
+
+(let [layers (-> [[[[1]]] 2 [[[3]]] 3]
+                 zip/vector-zip
+                 loc-layers)]
+  (for [layer layers]
+    (->> layer
+         (map zip/node)
+         println)))
+
+
+;; ([[[[1]]] 2 [[[3]]] 3])
+;; ([[[1]]] 2 [[[3]]] 3)
+;; ([[1]] [[3]])
+;; ([1] [3])
+;; (1 3)
+
+
+#_
+(->> zipper
+     loc-layers
+     (take 5)
+     (some find-locs-to)
+     (map ->exchange))
