@@ -1034,3 +1034,54 @@ iPhone 11 Pro
            loc-layers
            (some find-locs-to)
            (map ->exchage)))))
+
+
+
+(->> [1 [2 [3] 4] 5]
+     zip/vector-zip
+     iter-zip
+     (map zip/node)
+     (map println))
+
+;; 1
+;; [2 [3] 4]
+;; 2
+;; [3]
+;; 3
+;; 4
+;; 5
+
+
+#_
+(def zip-123
+  (zip/zipper any?
+              (constantly (seq [1 2 3]))
+              nil
+              1))
+
+
+;; (->> zip-123 iter-zip (take 10) (map zip/node))
+
+
+#_
+(def rules
+  [[:rub :usd]
+   [:usd :eur]
+   [:eur :rub]])
+
+
+(-> [1 2 3]
+    zip/vector-zip
+    zip/children)
+
+;; (1 2 3)
+
+
+(-> [1 2 3]
+    zip/vector-zip
+    loc-children)
+
+#_
+([1 {:l [] :pnodes [[1 2 3]] :ppath nil :r (2 3)}]
+ [2 {:l [1] :pnodes [[1 2 3]] :ppath nil :r (3)}]
+ [3 {:l [1 2] :pnodes [[1 2 3]] :ppath nil :r nil}])
