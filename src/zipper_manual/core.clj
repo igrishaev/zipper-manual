@@ -280,6 +280,13 @@ nil
 (def product-names
   (mapcat :content products))
 
+
+(defn find-first [pred coll]
+  (some (fn [x]
+          (when (pred x)
+            x))
+        coll))
+
 #_
 (->> "products.xml"
      io/resource
@@ -352,11 +359,18 @@ nil
   (-> loc zip/node :tag (= :organization)))
 
 
+#_
 (defn loc->org [loc]
   (->> loc
        (iterate zip/up)
        (drop-while (complement loc-org?))
        (first)))
+
+
+(defn loc->org [loc]
+  (->> loc
+       (iterate zip/up)
+       (find-first loc-org?)))
 
 
 (->> "products-branch.xml"
@@ -420,9 +434,14 @@ nil
   (some-> node :attrs :type (= "fiber")))
 
 
+#_
 (defn with-fiber? [loc]
   (let [nodes (node-neighbors loc)]
     (some node-fiber? nodes)))
+
+(defn with-fiber? [loc]
+  (let [nodes (node-neighbors loc)]
+    (find-first node-fiber? nodes)))
 
 
 (->> "products-bundle.xml"
@@ -1091,3 +1110,20 @@ iPhone 11 Pro
      (take 5)
      (some find-locs-to)
      (map ->exchange))
+
+(def to :foo)
+
+(defn loc-to? [loc]
+  (-> loc zip/node (= to)))
+
+
+(def loc-to
+  (->> zip-val
+       iter-zip
+       (find-first loc-to?)))
+
+
+(def locs-to
+  (->> zip-val
+       iter-zip
+       (filter loc-to?)))
