@@ -1127,3 +1127,27 @@ iPhone 11 Pro
   (->> zip-val
        iter-zip
        (filter loc-to?)))
+
+
+(def loc-error
+  (->> data
+       zip/vector-zip
+       iter-zip
+       (find-first loc-error?)))
+
+
+(defn find-loc [loc loc-pred]
+  (->> loc
+       iter-zip
+       (find-first loc-pred)))
+
+
+(defn alter-loc [loc loc-fn]
+  (loop [loc loc]
+    (if (zip/end? loc)
+      loc
+      (-> loc loc-fn zip/next recur))))
+
+
+(defn loc-2? [loc]
+  (-> loc zip/node (= 2)))
